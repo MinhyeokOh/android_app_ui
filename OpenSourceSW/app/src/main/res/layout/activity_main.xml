@@ -19,7 +19,8 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="1.0"
-        app:srcCompat="?attr/listChoiceBackgroundIndicator" />
+        app:srcCompat="?attr/listChoiceBackgroundIndicator"
+        tools:srcCompat="@tools:sample/avatars" />
 
     <Button
         android:id="@+id/prevButton"
@@ -83,8 +84,8 @@
 
     <EditText
         android:id="@+id/editText2"
-        android:layout_width="187dp"
-        android:layout_height="50dp"
+        android:layout_width="306dp"
+        android:layout_height="49dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="10dp"
         android:layout_marginEnd="204dp"
@@ -104,32 +105,33 @@
         android:layout_width="75dp"
         android:layout_height="66dp"
         android:layout_marginStart="9dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="220dp"
         android:layout_marginBottom="40dp"
         android:foreground="@drawable/googlemap"
         android:text="Button"
         android:visibility="visible"
-        app:layout_constraintBottom_toTopOf="@+id/imageView"
 
+        app:layout_constraintBottom_toTopOf="@+id/imageView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
+
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintStart_tostartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editText2"
         app:layout_constraintVertical_bias="0.441" />
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/textView"
         android:layout_width="86dp"
         android:layout_height="36dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="15dp"
-        android:layout_marginBottom="5dp"
+        android:layout_marginBottom="20dp"
         android:text="Place: "
         android:textSize="30sp"
         app:layout_constraintBottom_toTopOf="@+id/imageView"
-        app:layout_constraintEnd_toStartOf="mapButton"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editText2"
