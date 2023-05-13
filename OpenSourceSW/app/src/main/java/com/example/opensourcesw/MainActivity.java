@@ -1,8 +1,12 @@
 package com.example.opensourcesw;
-
+import java.nio.charset.Charset;
+import com.example.opensourcesw.R;
+import java.net.URLEncoder;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import java.io.IOException;
+import android.Manifest;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
@@ -31,13 +35,22 @@ import java.io.File;
 import java.sql.Blob;
 import java.util.Date;
 import java.util.Locale;
+import android.database.sqlite.SQLiteOpenHelper;
+import com.example.opensourcesw.MyDatabaseHelper;
+import androidx.core.content.ContextCompat;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import android.os.Environment;
 
 public class MainActivity extends AppCompatActivity {
+    private final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
+    private final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
 
     SQLiteDatabase database;
     static int currentIndex;
     static int numImage;
-    ImageView imageView = (ImageView) findViewById(R.id.imageView);
+    ImageView imageView;
+    SQLiteOpenHelper mdh = new MyDatabaseHelper(MainActivity.this);
 
     private List<String> pathList = new ArrayList<>();
     private List<Bitmap> imgList = new ArrayList<>();
@@ -49,17 +62,15 @@ public class MainActivity extends AppCompatActivity {
         createDatabase();
         createTable();
 
-
-
         Button prevButton = (Button) findViewById(R.id.prevButton);
         Button nextButton = (Button) findViewById(R.id.nextButton);
         Button mapButton = (Button) findViewById(R.id.mapButton);
         Button diaryButton = (Button) findViewById(R.id.diaryButton);
 
+        imageView = (ImageView) findViewById(R.id.imageView);
 
-
-        //EditText editTextTag = (EditText) findViewById(R.id.editText);
-        //EditText startDate = (EditText) findViewById(R.id.editText2);
+        EditText editTextTag = (EditText) findViewById(R.id.editText);
+        EditText startDate = (EditText) findViewById(R.id.editText2);
 
 
         prevButton.setOnClickListener(new View.OnClickListener() {
@@ -90,8 +101,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        galleryInfoLink();
-        /*
+
+
         editTextTag.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event){
@@ -107,96 +118,127 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
-        */
+
+        galleryInfoLink();
+        showImageList(0);
+
 
     }
 
-    private static float[] getLatLongFromImageFile(String imagePath) {
-        float[] latLong = new float[2];
-        try {
-            ExifInterface exifInterface = new ExifInterface(imagePath);
-            if (exifInterface.getLatLong(latLong)) {
-                return latLong;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+
+    public void createDatabase(){
+        database = openOrCreateDatabase("opensource", MODE_PRIVATE, null);
     }
 
-    private void createDatabase(){
-        database = openOrCreateDatabase("os", MODE_PRIVATE, null);
-    }
-
-    private void createTable(){
+    public void createTable(){
         if(database == null){
             return;
         }
-        database.execSQL("create table image" + "(" + "_id integer PRIMARY KEY autoincrement, " +
-                " img BLOB, " + " tag text, " + " date DATE, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300))");
+        database.execSQL("create table if not exists image " + "(" + "_id integer PRIMARY KEY autoincrement, " +
+                " img BLOB, " + " tag text, " + " date DATE, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(500))");
     }
 
     protected void galleryInfoLink(){
-        ContentResolver resolver = getContentResolver();
         ContentValues contentValues = new ContentValues();
+        String filePath = "";
+
+        String tags = "";
+        int n = 0;
         String[] projection = {
                 MediaStore.Images.Media._ID,
-                MediaStore.Images.Media.DATA,
+                MediaStore.Images.Media.RELATIVE_PATH,
                 MediaStore.Images.Media.DISPLAY_NAME,
-                MediaStore.Images.Media.DATE_ADDED,
+                MediaStore.Images.Media.DATE_TAKEN,
         };
+        String sortOrder = MediaStore.Images.Media._ID + " DESC";
 
-        Cursor cursor = resolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE },  MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+        }
+
+
+        Cursor cursor = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 null,
                 null,
-                null);
+                sortOrder);
 
-        if (cursor != null) {
+
+        if (cursor != null)
             while (cursor.moveToNext()) {
                 @SuppressLint("Range")
                 int id = cursor.getInt(cursor.getColumnIndex(MediaStore.Images.Media._ID));
                 @SuppressLint("Range")
-                String data = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
+                int rd = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH);
+                try {
+                    filePath = cursor.getString(rd);
+                }catch(Exception e){
+                    continue;
+                }
                 @SuppressLint("Range")
                 String display_name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
                 @SuppressLint("Range")
-                Date date_added = new Date(cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)));
+                Date date_taken = new Date(cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN)));
+
+
                 try{
-                    String filePath = data + display_name;
+                    filePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filePath + display_name;
                     File file = new File(filePath);
 
-                    float[] latlong = getLatLongFromImageFile(filePath);
-                    float latitude = latlong[0];
-                    float longitude = latlong[1];
+                    ExifInterface exifInterface = new ExifInterface(filePath);
+
+                    float latitude;
+                    float longitude;
+                    try {
+                        latitude = Float.parseFloat(exifInterface.getAttribute(ExifInterface.TAG_GPS_LATITUDE));
+                        longitude = Float.parseFloat(exifInterface.getAttribute(ExifInterface.TAG_GPS_LONGITUDE));
+                    }catch(Exception e){
+                        latitude = 0.0f;
+                        longitude = 0.0f;
+                    }
+
 
                     if (file.exists()) {
                         Bitmap bitmap = BitmapFactory.decodeFile(filePath);
-
-                        ExifInterface exif = new ExifInterface(filePath);
-                        String tagValue = exif.getAttribute(ExifInterface.TAG_MAKE);
 
                         ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
                         byte[] byteArray = stream.toByteArray();
 
-                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd");
+                        SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-DD");
 
                         contentValues.put("_id", id);
                         contentValues.put("img", byteArray);
-                        contentValues.put("tag", tagValue);
-                        contentValues.put("date", sdf.format(date_added));
+                        //contentValues.put("tag", tags);
+                        contentValues.put("date", sdf.format(date_taken));
                         contentValues.put("latitude", latitude);
                         contentValues.put("longitude", longitude);
                         contentValues.put("filePath", filePath);
+
+                        database.insertWithOnConflict("image", null, contentValues, SQLiteDatabase.CONFLICT_IGNORE);
+                        imgList.add(bitmap);
+
                     }
+
                 } catch(Exception e){
                     return;
                 }
+                numImage = imgList.size();
+            }
+
+            if(imgList.size() != 0) {
+                showImageList(0);
             }
             cursor.close();
-        }
+
+
 
     }
 
@@ -211,7 +253,8 @@ public class MainActivity extends AppCompatActivity {
             showImageList(--currentIndex);
         }
         else{
-            Toast.makeText(null, "첫 번째 이미지입니다.", Toast.LENGTH_SHORT);
+            Toast toastView = Toast.makeText(this, "첫 번째 이미지입니다.", Toast.LENGTH_SHORT);
+            toastView.show();
         }
     }
 
@@ -220,49 +263,53 @@ public class MainActivity extends AppCompatActivity {
             showImageList(++currentIndex);
         }
         else{
-            Toast.makeText(null, "마지막 이미지입니다.", Toast.LENGTH_SHORT);
+            Toast toastView = Toast.makeText(this, "마지막 이미지입니다.", Toast.LENGTH_SHORT);
+            toastView.show();
         }
     }
 
     protected void onTagNameInput(EditText et){
         String inputText = et.getText().toString();
-        String sql = "select filePath from image where tag like '%" + inputText + "%'";
+        System.out.println(inputText);
+        String sql = "SELECT filePath FROM image WHERE tag LIKE '%" + inputText + "%'";
         Cursor cursor = database.rawQuery(sql, null);
 
         numImage = cursor.getCount();
         currentIndex = 0;
 
         if(imgList.size() != 0){
-            imgList = new ArrayList<Bitmap>();
+            imgList.clear();
         }
 
         for(int i = 0; i < numImage; i++){
-            Bitmap bitmap = BitmapFactory.decodeFile(pathList.get(i));
+            Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(i));
             imgList.add(bitmap);
         }
 
+        currentIndex = 0;
         showImageList(currentIndex);
     }
 
     protected void onPeriodInput(EditText et){
         String inputText = et.getText().toString();
         try{
-            String arr[] = inputText.split("/");
+            String arr[] = inputText.split("-");
             if(arr.length != 2){
                 throw new Exception();
             }
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd", Locale.ENGLISH);
+            SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-DD", Locale.ENGLISH);
             Date startDate = sdf.parse(arr[0]);
             Date endDate = sdf.parse(arr[1]);
 
-            String sql = "select display_name from image where date between '" + startDate + "' and '" + endDate + "'";
+            String sql = "select filePath from image where date between '" + startDate + "' and '" + endDate + "'";
             Cursor cursor = database.rawQuery(sql, null);
             numImage = cursor.getCount();
+            System.out.println(numImage);
             currentIndex = 0;
 
-            if(pathList.size() != 0){
-                pathList = new ArrayList<String>();
+            if(imgList.size() != 0){
+                imgList.clear();
             }
 
             for(int i = 0; i < numImage; i++){
@@ -270,16 +317,18 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if(imgList.size() != 0){
-                imgList = new ArrayList<Bitmap>();
+                imgList.clear();
             }
 
             for(int i = 0; i < numImage; i++){
-                Bitmap bitmap = BitmapFactory.decodeFile(pathList.get(i));
+                Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(i));
                 imgList.add(bitmap);
             }
+            currentIndex = 0;
             showImageList(currentIndex);
         }catch(Exception e){
-            Toast.makeText(null, "Invalid Input", Toast.LENGTH_SHORT);
+            Toast toastView = Toast.makeText(this, "Invalid Input", Toast.LENGTH_SHORT);
+            toastView.show();
         }
     }
 
@@ -288,6 +337,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onDiaryButtonClicked(){
-
+     
     }
 }
