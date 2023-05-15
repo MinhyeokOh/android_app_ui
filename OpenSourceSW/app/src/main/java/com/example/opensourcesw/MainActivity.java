@@ -2,6 +2,7 @@ package com.example.opensourcesw;
 import java.nio.charset.Charset;
 import com.example.opensourcesw.R;
 import java.net.URLEncoder;
+import android.content.Intent;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import java.io.IOException;
@@ -46,14 +47,14 @@ public class MainActivity extends AppCompatActivity {
     private final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
     private final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
 
-    SQLiteDatabase database;
+    static SQLiteDatabase database;
     static int currentIndex;
     static int numImage;
     ImageView imageView;
     SQLiteOpenHelper mdh = new MyDatabaseHelper(MainActivity.this);
 
-    private List<String> pathList = new ArrayList<>();
-    private List<Bitmap> imgList = new ArrayList<>();
+    static List<String> pathList = new ArrayList<>();
+    static List<Bitmap> imgList = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         imageView = (ImageView) findViewById(R.id.imageView);
 
         EditText editTextTag = (EditText) findViewById(R.id.editText);
-        EditText startDate = (EditText) findViewById(R.id.editText2);
+        EditText DateText = (EditText) findViewById(R.id.editText2);
 
 
         prevButton.setOnClickListener(new View.OnClickListener() {
@@ -111,10 +112,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        startDate.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        DateText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event){
-                onPeriodInput(startDate);
+                onPeriodInput(DateText);
                 return true;
             }
         });
@@ -135,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         database.execSQL("create table if not exists image " + "(" + "_id integer PRIMARY KEY autoincrement, " +
-                " img BLOB, " + " tag text, " + " date DATE, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(500))");
+                " img BLOB, " + " tag text, " + " date DATE, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(500));");
     }
 
     protected void galleryInfoLink(){
@@ -185,8 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 String display_name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
                 @SuppressLint("Range")
                 Date date_taken = new Date(cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN)));
-
-
+                long timeInMillis = date_taken.getTime();
                 try{
                     filePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filePath + display_name;
                     File file = new File(filePath);
@@ -212,12 +212,12 @@ public class MainActivity extends AppCompatActivity {
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
                         byte[] byteArray = stream.toByteArray();
 
-                        SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-DD");
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
                         contentValues.put("_id", id);
                         contentValues.put("img", byteArray);
-                        //contentValues.put("tag", tags);
-                        contentValues.put("date", sdf.format(date_taken));
+
+                        contentValues.put("date", timeInMillis);
                         contentValues.put("latitude", latitude);
                         contentValues.put("longitude", longitude);
                         contentValues.put("filePath", filePath);
@@ -271,10 +271,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onTagNameInput(EditText et){
         String inputText = et.getText().toString();
         System.out.println(inputText);
-        String sql = "SELECT filePath FROM image WHERE tag LIKE '%" + inputText + "%'";
-        Cursor cursor = database.rawQuery(sql, null);
+        String sql = "SELECT filePath FROM image WHERE tag LIKE '%?%';";
+        Cursor cursor = database.rawQuery(sql, new String[]{inputText});
+        int n = 0;
 
-        numImage = cursor.getCount();
+        if (cursor.moveToFirst()) {
+            n = cursor.getCount();
+        }
+
+        if(n == 0){
+            Toast toastView = Toast.makeText(this, "해당 태그를 가진 이미지가 없습니다.", Toast.LENGTH_SHORT);
+            toastView.show();
+            return;
+        }
         currentIndex = 0;
 
         if(imgList.size() != 0){
@@ -293,19 +302,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onPeriodInput(EditText et){
         String inputText = et.getText().toString();
         try{
-            String arr[] = inputText.split("-");
+            String arr[] = inputText.split("~");
             if(arr.length != 2){
                 throw new Exception();
             }
 
-            SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-DD", Locale.ENGLISH);
-            Date startDate = sdf.parse(arr[0]);
-            Date endDate = sdf.parse(arr[1]);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date sd = sdf.parse(arr[0]);
+            Date ed = sdf.parse(arr[1]);
 
-            String sql = "select filePath from image where date between '" + startDate + "' and '" + endDate + "'";
-            Cursor cursor = database.rawQuery(sql, null);
-            numImage = cursor.getCount();
-            System.out.println(numImage);
+            String startDate = sdf.format(sd);
+            String endDate = sdf.format(ed);
+
+            String sql = "select filePath from image where date between ? and ?";
+            Cursor cursor = database.rawQuery(sql, new String[]{startDate, endDate});
+            int n = 0;
+
+            if (cursor.moveToFirst()) {
+                n = cursor.getCount();
+            }
+            if(n == 0){
+                Toast toastView = Toast.makeText(this, "해당 기간에 촬영한 이미지가 없습니다.", Toast.LENGTH_SHORT);
+                toastView.show();
+                return;
+            }
             currentIndex = 0;
 
             if(imgList.size() != 0){
@@ -324,11 +344,15 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(i));
                 imgList.add(bitmap);
             }
+
+
+
             currentIndex = 0;
             showImageList(currentIndex);
         }catch(Exception e){
             Toast toastView = Toast.makeText(this, "Invalid Input", Toast.LENGTH_SHORT);
             toastView.show();
+            e.printStackTrace();
         }
     }
 
@@ -337,6 +361,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onDiaryButtonClicked(){
-     
+        Intent intent = new Intent(this, MainActivity2.class);
+
+        Bitmap bitmap = imgList.get(currentIndex);
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, stream);
+        byte[] byteArray = stream.toByteArray();
+        intent.putExtra("imageByte", byteArray);
+        startActivity(intent);
     }
 }
