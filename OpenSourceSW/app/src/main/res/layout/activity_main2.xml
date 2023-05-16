@@ -96,15 +96,18 @@
 
     <EditText
         android:id="@+id/editTextTextMultiLine2"
-        android:layout_width="325dp"
-        android:layout_height="209dp"
-        android:layout_marginStart="43dp"
+        android:layout_width="314dp"
+        android:layout_height="200dp"
+        android:layout_marginStart="35dp"
         android:layout_marginTop="11dp"
         android:layout_marginEnd="43dp"
         android:layout_marginBottom="12dp"
         android:ems="10"
         android:gravity="start|top"
         android:inputType="textMultiLine"
+        android:singleLine="true"
+
+        android:textCursorDrawable="@null"
         app:layout_constraintBottom_toTopOf="@+id/button6"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -112,10 +115,10 @@
 
     <EditText
         android:id="@+id/editTextTextMultiLine"
-        android:layout_width="197dp"
-        android:layout_height="215dp"
+        android:layout_width="179dp"
+        android:layout_height="197dp"
         android:layout_marginStart="11dp"
-        android:layout_marginEnd="50dp"
+        android:layout_marginEnd="43dp"
         android:layout_marginBottom="20dp"
         android:ems="10"
         android:gravity="start|top"
@@ -123,6 +126,8 @@
         app:layout_constraintBottom_toTopOf="@+id/editTextTextMultiLine2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/imageView2"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+
+        android:textCursorDrawable="@null"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
