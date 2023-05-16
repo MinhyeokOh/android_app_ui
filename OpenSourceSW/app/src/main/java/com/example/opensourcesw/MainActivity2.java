@@ -54,8 +54,9 @@ import android.text.Editable;
 public class MainActivity2 extends AppCompatActivity {
     private ImageView imgView2;
     private EditText et, et2;
+    SQLiteDatabase db = MainActivity.database;
+    private String filePath;
 
-    SQLiteDatabase database = MainActivity.database;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
@@ -68,8 +69,11 @@ public class MainActivity2 extends AppCompatActivity {
         et = (EditText) findViewById(R.id.editTextTextMultiLine);
         et2 = (EditText) findViewById(R.id.editTextTextMultiLine2);
 
-        et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(250)});
-        et2.setFilters(new InputFilter[]{new InputFilter.LengthFilter(350)});
+        et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
+        et2.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
+
+        et.setEnabled(false);
+        et2.setEnabled(false);
 
         CheckBox checkBox = (CheckBox) findViewById(R.id.checkBox);
 
@@ -79,6 +83,31 @@ public class MainActivity2 extends AppCompatActivity {
         Bitmap bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
 
         imgView2.setImageBitmap(bitmap);
+
+        filePath = getIntent().getStringExtra("filePath");
+
+
+
+        try {
+            Cursor cursor = db.rawQuery("SELECT diary from image where filepath = '?'", new String[]{filePath});
+            String diary = cursor.getString(0);
+                String str1;
+                String str2;
+                if (diary.length() < 100) {
+                    str1 = diary.substring(0, diary.length());
+                    et.setText(str1);
+                } else {
+                    str1 = diary.substring(0, 100);
+                    str2 = diary.substring(100, diary.length());
+                    et.setText(str1);
+                    et.setText(str2);
+                }
+
+
+        }catch(Exception e){
+
+        }
+
 
         storeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -109,9 +138,10 @@ public class MainActivity2 extends AppCompatActivity {
         });
 
         checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            Toast toastView;
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                CheckBoxChecked(isChecked);
+                checkBoxChecked(isChecked);
             }
         });
 
@@ -122,7 +152,7 @@ public class MainActivity2 extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.length() >= 200) {
+                if (s.length() >= 100) {
                     et2.requestFocus();
                 }
             }
@@ -134,20 +164,35 @@ public class MainActivity2 extends AppCompatActivity {
     }
     private void onStoreButtonClicked() {
         String inputText = et.getText().toString();
+        if(inputText == null){
+            return;
+        }
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage("일기를 저장하시겠습니까?(yes/no)")
                     .setCancelable(false)
                     .setPositiveButton("yes", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
-                            String inputText2 = et2.getText().toString();
-                            String diaryText = "";
-                            if(inputText2 == null){
-                                diaryText = inputText;
-                            } else {
-                                diaryText = inputText + inputText2;
-                            }
+                            try {
+                                String inputText2 = et2.getText().toString();
+                                String diaryText = "";
 
+                                diaryText = inputText + inputText2;
+                                db.beginTransaction();
+                                String sql = "UPDATE image set diary = '" + diaryText + "' where filepath = '" + filePath + "'";
+                                db.execSQL(sql);
+                                db.setTransactionSuccessful();
+                                db.endTransaction();
+
+                            }catch(Exception e){
+                                String diaryText = inputText;
+                                db.beginTransaction();
+                                String sql = "UPDATE image set diary = '" + diaryText + "' where filepath = '" + filePath + "'";
+                                db.execSQL(sql);
+                                db.setTransactionSuccessful();
+                                db.endTransaction();
+
+                            }
                         }
                     })
                     .setNegativeButton("no", new DialogInterface.OnClickListener() {
@@ -160,6 +205,10 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
     private void onModifyButtonClicked() {
+        Toast toastView = Toast.makeText(this, "일기 작성 및 수정 시작", Toast.LENGTH_SHORT);
+        toastView.show();
+        et.setEnabled(true);
+        et2.setEnabled(true);
 
     }
 
@@ -179,17 +228,24 @@ public class MainActivity2 extends AppCompatActivity {
                     });
             AlertDialog alert = builder.create();
             alert.show();
+            db.beginTransaction();
+            String sql = "UPDATE image SET diary = null where filepath = '" + filePath + "'";
+            db.execSQL(sql);
+            db.setTransactionSuccessful();
+            db.endTransaction();
+
     }
 
     private void onCreateTagsClicked() {
 
     }
 
-    private void CheckBoxChecked(boolean isChecked) {
-        if (isChecked) {
-
-        } else {
-
+    private void checkBoxChecked(boolean isChecked){
+        if(isChecked){
+            // 키워드 생성 기능 구현하기
+        } else{
+            // 일기 작성 기능 구현하기
         }
     }
+
 }

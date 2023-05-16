@@ -53,8 +53,8 @@ public class MainActivity extends AppCompatActivity {
     ImageView imageView;
     SQLiteOpenHelper mdh = new MyDatabaseHelper(MainActivity.this);
 
-    static List<String> pathList = new ArrayList<>();
-    static List<Bitmap> imgList = new ArrayList<>();
+    static ArrayList<String> pathList = new ArrayList<>();
+    static ArrayList<Bitmap> imgList = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -132,11 +132,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void createTable(){
-        if(database == null){
+        if(database == null) {
             return;
         }
         database.execSQL("create table if not exists image " + "(" + "_id integer PRIMARY KEY autoincrement, " +
-                " img BLOB, " + " tag text, " + " date DATE, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(500));");
+                " img BLOB, " + " tag text, " + " date_taken TEXT, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(600));");
     }
 
     protected void galleryInfoLink(){
@@ -185,8 +185,10 @@ public class MainActivity extends AppCompatActivity {
                 @SuppressLint("Range")
                 String display_name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
                 @SuppressLint("Range")
-                Date date_taken = new Date(cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN)));
-                long timeInMillis = date_taken.getTime();
+                int columnindex = cursor.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN);
+
+                String dateString = cursor.getString(columnindex);
+
                 try{
                     filePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filePath + display_name;
                     File file = new File(filePath);
@@ -212,19 +214,20 @@ public class MainActivity extends AppCompatActivity {
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
                         byte[] byteArray = stream.toByteArray();
 
-                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+
+
+
 
                         contentValues.put("_id", id);
                         contentValues.put("img", byteArray);
-
-                        contentValues.put("date", timeInMillis);
+                        contentValues.put("date_taken", dateString);
                         contentValues.put("latitude", latitude);
                         contentValues.put("longitude", longitude);
                         contentValues.put("filePath", filePath);
 
                         database.insertWithOnConflict("image", null, contentValues, SQLiteDatabase.CONFLICT_IGNORE);
                         imgList.add(bitmap);
-
+                        pathList.add(filePath);
                     }
 
                 } catch(Exception e){
@@ -259,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onNextButtonPressed(){
-        if(currentIndex != numImage - 1){
+        if(currentIndex != numImage - 1 && numImage != 1){
             showImageList(++currentIndex);
         }
         else{
@@ -271,31 +274,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onTagNameInput(EditText et){
         String inputText = et.getText().toString();
         System.out.println(inputText);
-        String sql = "SELECT filePath FROM image WHERE tag LIKE '%?%';";
-        Cursor cursor = database.rawQuery(sql, new String[]{inputText});
-        int n = 0;
+        String sql = "SELECT filePath FROM image WHERE tag LIKE ?";
+        String[] selectionArgs = {"%" + inputText + "%"};
+        Cursor cursor = database.rawQuery(sql, selectionArgs);
+        currentIndex = 0;
 
-        if (cursor.moveToFirst()) {
-            n = cursor.getCount();
+
+        imgList.clear();
+        pathList.clear();
+
+        cursor.moveToFirst();
+        int index = 0;
+        while (cursor.moveToNext()) {
+            Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(index++));
+            imgList.add(bitmap);
         }
 
-        if(n == 0){
-            Toast toastView = Toast.makeText(this, "해당 태그를 가진 이미지가 없습니다.", Toast.LENGTH_SHORT);
+
+        if(imgList.size() == 0){
+            Toast toastView = Toast.makeText(this, "해당 태그를 가진 사진이 없습니다.", Toast.LENGTH_SHORT);
             toastView.show();
             return;
         }
         currentIndex = 0;
+        numImage = imgList.size();
 
-        if(imgList.size() != 0){
-            imgList.clear();
-        }
-
-        for(int i = 0; i < numImage; i++){
-            Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(i));
-            imgList.add(bitmap);
-        }
-
-        currentIndex = 0;
         showImageList(currentIndex);
     }
 
@@ -307,48 +310,45 @@ public class MainActivity extends AppCompatActivity {
                 throw new Exception();
             }
 
+            String sd = arr[0];
+            String ed = arr[1];
+
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            Date sd = sdf.parse(arr[0]);
-            Date ed = sdf.parse(arr[1]);
+            Date sd2 = sdf.parse(sd);
+            Date ed2 = sdf.parse(ed);
 
-            String startDate = sdf.format(sd);
-            String endDate = sdf.format(ed);
+            String startDate = sdf.format(sd2);
+            String endDate = sdf.format(ed2);
 
-            String sql = "select filePath from image where date between ? and ?";
-            Cursor cursor = database.rawQuery(sql, new String[]{startDate, endDate});
-            int n = 0;
+            String sql = "SELECT filepath FROM image WHERE datetime(date_taken/1000, 'unixepoch') BETWEEN ? AND ?";
+            String[] selectionArgs = { startDate, endDate };
+            Cursor cursor = database.rawQuery(sql, selectionArgs);
 
-            if (cursor.moveToFirst()) {
-                n = cursor.getCount();
+
+
+            currentIndex = 0;
+
+
+            imgList.clear();
+            pathList.clear();
+
+            int index = 0;
+            cursor.moveToFirst();
+            while (cursor.moveToNext()){
+                Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(index++));
+                imgList.add(bitmap);
             }
-            if(n == 0){
-                Toast toastView = Toast.makeText(this, "해당 기간에 촬영한 이미지가 없습니다.", Toast.LENGTH_SHORT);
+
+            if(imgList.size() == 0){
+                Toast toastView = Toast.makeText(this, "해당 기간에 촬영한 사진이 없습니다.", Toast.LENGTH_SHORT);
                 toastView.show();
                 return;
             }
             currentIndex = 0;
-
-            if(imgList.size() != 0){
-                imgList.clear();
-            }
-
-            for(int i = 0; i < numImage; i++){
-                pathList.add(cursor.getString(i));
-            }
-
-            if(imgList.size() != 0){
-                imgList.clear();
-            }
-
-            for(int i = 0; i < numImage; i++){
-                Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(i));
-                imgList.add(bitmap);
-            }
-
-
-
-            currentIndex = 0;
+            numImage = imgList.size();
             showImageList(currentIndex);
+
+
         }catch(Exception e){
             Toast toastView = Toast.makeText(this, "Invalid Input", Toast.LENGTH_SHORT);
             toastView.show();
@@ -368,6 +368,10 @@ public class MainActivity extends AppCompatActivity {
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, stream);
         byte[] byteArray = stream.toByteArray();
         intent.putExtra("imageByte", byteArray);
+
+        String filePath = pathList.get(currentIndex);
+        intent.putExtra("filePath", filePath);
+
         startActivity(intent);
     }
 }
