@@ -3,4 +3,3 @@
 
 @@@ simulation @@@
 
-![search image with places](https://github.com/MinhyeokOh/android_app_ui/blob/main/placesearch.mp4)
