@@ -3,4 +3,4 @@
 
 @@@ simulation @@@
 
-![prototype](./simulation.gif)
+![search image with places](./placesearch.mp4)
