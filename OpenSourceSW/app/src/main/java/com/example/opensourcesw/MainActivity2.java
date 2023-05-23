@@ -50,30 +50,66 @@ import androidx.appcompat.app.AlertDialog;
 import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.text.Editable;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 
 public class MainActivity2 extends AppCompatActivity {
     private ImageView imgView2;
     private EditText et, et2;
     SQLiteDatabase db = MainActivity.database;
     private String filePath;
+    Button storeButton;
+    Button modifyButton;
+    Button deleteButton;
+    Button createTagsButton;
+    String selectedWord;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
 
-        Button storeButton = (Button) findViewById(R.id.button6);
-        Button modifyButton = (Button) findViewById(R.id.button7);
-        Button deleteButton = (Button) findViewById(R.id.button8);
-        Button createTagsButton = (Button) findViewById(R.id.button9);
+        storeButton = (Button) findViewById(R.id.button6);
+        modifyButton = (Button) findViewById(R.id.button7);
+        deleteButton = (Button) findViewById(R.id.button8);
+        createTagsButton = (Button) findViewById(R.id.button9);
+
+        createTagsButton.setEnabled(false);
 
         et = (EditText) findViewById(R.id.editTextTextMultiLine);
         et2 = (EditText) findViewById(R.id.editTextTextMultiLine2);
 
-        et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
-        et2.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
+        filePath = getIntent().getStringExtra("filePath");
+
+        Cursor cursor = null;
+        cursor = db.rawQuery("SELECT diary from image where filePath = ?", new String[]{filePath});
+        String diary;
+        if (cursor.moveToFirst()){
+            int columnIndex = cursor.getColumnIndex("diary");
+            diary = cursor.getString(columnIndex);
+
+        }
+        else{
+            diary = "";
+        }
+
+        try {
+            if (diary.length() < 100) {
+                et.setText(diary);
+            } else {
+                String str = diary.substring(0, 100);
+                et.setText(str);
+                String str2 = diary.substring(100, diary.length());
+                et2.setText(str2);
+            }
+        }catch(Exception e){
+
+        }
 
         et.setEnabled(false);
         et2.setEnabled(false);
+
+        et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
+        et2.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
 
         CheckBox checkBox = (CheckBox) findViewById(R.id.checkBox);
 
@@ -84,29 +120,6 @@ public class MainActivity2 extends AppCompatActivity {
 
         imgView2.setImageBitmap(bitmap);
 
-        filePath = getIntent().getStringExtra("filePath");
-
-
-
-        try {
-            Cursor cursor = db.rawQuery("SELECT diary from image where filepath = '?'", new String[]{filePath});
-            String diary = cursor.getString(0);
-                String str1;
-                String str2;
-                if (diary.length() < 100) {
-                    str1 = diary.substring(0, diary.length());
-                    et.setText(str1);
-                } else {
-                    str1 = diary.substring(0, 100);
-                    str2 = diary.substring(100, diary.length());
-                    et.setText(str1);
-                    et.setText(str2);
-                }
-
-
-        }catch(Exception e){
-
-        }
 
 
         storeButton.setOnClickListener(new View.OnClickListener() {
@@ -148,6 +161,7 @@ public class MainActivity2 extends AppCompatActivity {
         et.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
             }
 
             @Override
@@ -161,6 +175,27 @@ public class MainActivity2 extends AppCompatActivity {
             public void afterTextChanged(Editable s) {
             }
         });
+
+
+    et2.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+
+            }
+
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
+
     }
     private void onStoreButtonClicked() {
         String inputText = et.getText().toString();
@@ -173,9 +208,9 @@ public class MainActivity2 extends AppCompatActivity {
                     .setCancelable(false)
                     .setPositiveButton("yes", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
+                            String diaryText = "";
                             try {
                                 String inputText2 = et2.getText().toString();
-                                String diaryText = "";
 
                                 diaryText = inputText + inputText2;
                                 db.beginTransaction();
@@ -185,14 +220,15 @@ public class MainActivity2 extends AppCompatActivity {
                                 db.endTransaction();
 
                             }catch(Exception e){
-                                String diaryText = inputText;
+                                diaryText = inputText;
                                 db.beginTransaction();
-                                String sql = "UPDATE image set diary = '" + diaryText + "' where filepath = '" + filePath + "'";
+                                String sql = "UPDATE image set diary = '" + diaryText + "' where filepath = '" + filePath +"'";
                                 db.execSQL(sql);
                                 db.setTransactionSuccessful();
                                 db.endTransaction();
 
                             }
+
                         }
                     })
                     .setNegativeButton("no", new DialogInterface.OnClickListener() {
@@ -218,7 +254,11 @@ public class MainActivity2 extends AppCompatActivity {
                     .setCancelable(false)
                     .setPositiveButton("yes", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
-
+                            db.beginTransaction();
+                            String sql = "UPDATE image SET diary = '' where filePath = '" + filePath + "'";
+                            db.execSQL(sql);
+                            db.setTransactionSuccessful();
+                            db.endTransaction();
                         }
                     })
                     .setNegativeButton("no", new DialogInterface.OnClickListener() {
@@ -228,23 +268,80 @@ public class MainActivity2 extends AppCompatActivity {
                     });
             AlertDialog alert = builder.create();
             alert.show();
-            db.beginTransaction();
-            String sql = "UPDATE image SET diary = null where filepath = '" + filePath + "'";
-            db.execSQL(sql);
-            db.setTransactionSuccessful();
-            db.endTransaction();
+
 
     }
 
     private void onCreateTagsClicked() {
+        try {
+            if(selectedWord == null){
+                throw new Exception();
+            }
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            String message = selectedWord + " 키워드를 태그로 추가하겠습니까?(yes/no)";
 
+            builder.setMessage(message)
+                    .setCancelable(false)
+                    .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            db.beginTransaction();
+                            String sql = "UPDATE image SET tag = COALESCE(tag, '') || '" + selectedWord + "' WHERE filePath = '" + filePath + "'";
+                            db.execSQL(sql);
+                            db.setTransactionSuccessful();
+                            db.endTransaction();
+                        }
+                    })
+                    .setNegativeButton("no", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            return;
+                        }
+                    });
+            AlertDialog alert = builder.create();
+            alert.show();
+
+
+        }catch(Exception e){
+            Toast toastView = Toast.makeText(this, "키워드를 선택하지 않았습니다.", Toast.LENGTH_SHORT);
+            toastView.show();
+            e.printStackTrace();
+            return;
+        }
     }
 
     private void checkBoxChecked(boolean isChecked){
-        if(isChecked){
-            // 키워드 생성 기능 구현하기
-        } else{
-            // 일기 작성 기능 구현하기
+        if(isChecked){ // 키워드 선택 기능
+            Toast toastView = Toast.makeText(this, "일기에서 키워드를 선택하여 복사하고 create tags를 클릭하세요.", Toast.LENGTH_SHORT);
+            toastView.show();
+
+            et.setEnabled(true);
+            et2.setEnabled(true);
+
+            storeButton.setEnabled(false);
+            modifyButton.setEnabled(false);
+            deleteButton.setEnabled(false);
+            createTagsButton.setEnabled(true);
+
+            ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+
+            clipboardManager.addPrimaryClipChangedListener(new ClipboardManager.OnPrimaryClipChangedListener() {
+                @Override
+                public void onPrimaryClipChanged() {
+                    ClipData clipData = clipboardManager.getPrimaryClip();
+                    if(clipData != null && clipData.getItemCount() > 0) {
+                        selectedWord = clipData.getItemAt(0).getText().toString();
+                    }
+                }
+            });
+
+
+        } else{ // 일기 작성 기능
+            et.setEnabled(false);
+            et2.setEnabled(false);
+
+            storeButton.setEnabled(true);
+            modifyButton.setEnabled(true);
+            deleteButton.setEnabled(true);
+            createTagsButton.setEnabled(false);
         }
     }
 

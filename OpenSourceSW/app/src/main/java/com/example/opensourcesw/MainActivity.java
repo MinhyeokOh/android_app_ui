@@ -1,52 +1,64 @@
 package com.example.opensourcesw;
-import java.nio.charset.Charset;
-import com.example.opensourcesw.R;
-import java.net.URLEncoder;
 import android.content.Intent;
+import android.location.Geocoder;
+import android.content.Context;
+import com.google.android.gms.maps.model.LatLng;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-import java.io.IOException;
 import android.Manifest;
-import android.content.Context;
+import android.location.Address;
+import java.util.List;
+import java.util.Locale;
 import android.graphics.Bitmap;
 import android.annotation.SuppressLint;
-import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.icu.text.SimpleDateFormat;
 import android.media.ExifInterface;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.List;
+import com.google.android.gms.maps.SupportMapFragment;
+import android.location.Geocoder;
+import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.sql.Blob;
 import java.util.Date;
-import java.util.Locale;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import android.database.sqlite.SQLiteOpenHelper;
-import com.example.opensourcesw.MyDatabaseHelper;
+import android.view.KeyEvent;
 import androidx.core.content.ContextCompat;
 import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
-import android.os.Environment;
+import android.util.Log;
+import com.google.android.gms.maps.GoogleMap;
+
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import android.view.ViewGroup;
 
 public class MainActivity extends AppCompatActivity {
     private final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
     private final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
 
+
+    private Button nextButton;
+    private Button mapButton;
+    private Button diaryButton;
+    private Button prevButton;
+
+    private ArrayList<Bitmap> backUpList = new ArrayList<Bitmap>();
+
+    static ConstraintLayout constraintLayout;
     static SQLiteDatabase database;
     static int currentIndex;
     static int numImage;
@@ -63,10 +75,10 @@ public class MainActivity extends AppCompatActivity {
         createDatabase();
         createTable();
 
-        Button prevButton = (Button) findViewById(R.id.prevButton);
-        Button nextButton = (Button) findViewById(R.id.nextButton);
-        Button mapButton = (Button) findViewById(R.id.mapButton);
-        Button diaryButton = (Button) findViewById(R.id.diaryButton);
+        prevButton = (Button) findViewById(R.id.prevButton);
+        nextButton = (Button) findViewById(R.id.nextButton);
+        mapButton = (Button) findViewById(R.id.mapButton);
+        diaryButton = (Button) findViewById(R.id.diaryButton);
 
         imageView = (ImageView) findViewById(R.id.imageView);
 
@@ -89,10 +101,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mapButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onMapButtonClicked();
-            }
+
+                @Override
+                public void onClick(View v) { onMapButtonClicked(); }
         });
 
         diaryButton.setOnClickListener(new View.OnClickListener() {
@@ -129,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void createDatabase(){
         database = openOrCreateDatabase("opensource", MODE_PRIVATE, null);
+        database.setPageSize(4096);
     }
 
     public void createTable(){
@@ -136,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         database.execSQL("create table if not exists image " + "(" + "_id integer PRIMARY KEY autoincrement, " +
-                " img BLOB, " + " tag text, " + " date_taken TEXT, " + " latitude FLOAT, " + " longitude FLOAT, " + " filepath VARCHAR(300), " + "diary VARCHAR(600));");
+                " img BLOB, " + " tag text, " + " date_taken DATETIME, " + " latitude REAL, " + " longitude REAL, " + " filepath VARCHAR(300), " + "diary VARCHAR(600));");
     }
 
     protected void galleryInfoLink(){
@@ -150,6 +162,9 @@ public class MainActivity extends AppCompatActivity {
                 MediaStore.Images.Media.RELATIVE_PATH,
                 MediaStore.Images.Media.DISPLAY_NAME,
                 MediaStore.Images.Media.DATE_TAKEN,
+                MediaStore.Images.Media.LATITUDE,
+                MediaStore.Images.Media.LONGITUDE,
+                MediaStore.Images.Media.DESCRIPTION
         };
         String sortOrder = MediaStore.Images.Media._ID + " DESC";
 
@@ -186,24 +201,21 @@ public class MainActivity extends AppCompatActivity {
                 String display_name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
                 @SuppressLint("Range")
                 int columnindex = cursor.getColumnIndex(MediaStore.Images.Media.DATE_TAKEN);
-
                 String dateString = cursor.getString(columnindex);
+
+                tags = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DESCRIPTION));
+                if(tags == ""){
+                    tags = "";
+                }
+
+                double latitude = cursor.getDouble(cursor.getColumnIndex(MediaStore.Images.Media.LATITUDE));
+                double longitude = cursor.getDouble(cursor.getColumnIndex(MediaStore.Images.Media.LONGITUDE));
+
 
                 try{
                     filePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + filePath + display_name;
                     File file = new File(filePath);
 
-                    ExifInterface exifInterface = new ExifInterface(filePath);
-
-                    float latitude;
-                    float longitude;
-                    try {
-                        latitude = Float.parseFloat(exifInterface.getAttribute(ExifInterface.TAG_GPS_LATITUDE));
-                        longitude = Float.parseFloat(exifInterface.getAttribute(ExifInterface.TAG_GPS_LONGITUDE));
-                    }catch(Exception e){
-                        latitude = 0.0f;
-                        longitude = 0.0f;
-                    }
 
 
                     if (file.exists()) {
@@ -214,18 +226,18 @@ public class MainActivity extends AppCompatActivity {
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
                         byte[] byteArray = stream.toByteArray();
 
-
-
-
-
                         contentValues.put("_id", id);
                         contentValues.put("img", byteArray);
                         contentValues.put("date_taken", dateString);
+                        contentValues.put("tag", tags);
                         contentValues.put("latitude", latitude);
                         contentValues.put("longitude", longitude);
                         contentValues.put("filePath", filePath);
+                        contentValues.put("diary", " ");
+
 
                         database.insertWithOnConflict("image", null, contentValues, SQLiteDatabase.CONFLICT_IGNORE);
+
                         imgList.add(bitmap);
                         pathList.add(filePath);
                     }
@@ -262,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void onNextButtonPressed(){
-        if(currentIndex != numImage - 1 && numImage != 1){
+        if(currentIndex != numImage - 1 && numImage > 1){
             showImageList(++currentIndex);
         }
         else{
@@ -273,33 +285,37 @@ public class MainActivity extends AppCompatActivity {
 
     protected void onTagNameInput(EditText et){
         String inputText = et.getText().toString();
-        System.out.println(inputText);
+
         String sql = "SELECT filePath FROM image WHERE tag LIKE ?";
         String[] selectionArgs = {"%" + inputText + "%"};
-        Cursor cursor = database.rawQuery(sql, selectionArgs);
-        currentIndex = 0;
+        Cursor cursor = null;
+        try {
+            cursor = database.rawQuery(sql, selectionArgs);
+            currentIndex = 0;
+            if(cursor.getCount() == 0){
+                throw new Exception();
+            }
+            imgList.clear();
+            int index = 0;
+            if (cursor.moveToFirst()) {
+                do {
+                    int columnIndex = cursor.getColumnIndex("filepath");
+                    Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(columnIndex));
+                    imgList.add(bitmap);
+                }while (cursor.moveToNext());
+            }
 
 
-        imgList.clear();
-        pathList.clear();
-
-        cursor.moveToFirst();
-        int index = 0;
-        while (cursor.moveToNext()) {
-            Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(index++));
-            imgList.add(bitmap);
-        }
-
-
-        if(imgList.size() == 0){
-            Toast toastView = Toast.makeText(this, "해당 태그를 가진 사진이 없습니다.", Toast.LENGTH_SHORT);
-            toastView.show();
-            return;
-        }
         currentIndex = 0;
         numImage = imgList.size();
 
         showImageList(currentIndex);
+        }catch(Exception e){
+            Toast toastView = Toast.makeText(this, "해당 태그를 가진 이미지가 존재하지 않습니다.", Toast.LENGTH_SHORT);
+            toastView.show();
+            e.printStackTrace();
+            return;
+        }
     }
 
     protected void onPeriodInput(EditText et){
@@ -320,30 +336,31 @@ public class MainActivity extends AppCompatActivity {
             String startDate = sdf.format(sd2);
             String endDate = sdf.format(ed2);
 
-            String sql = "SELECT filepath FROM image WHERE datetime(date_taken/1000, 'unixepoch') BETWEEN ? AND ?";
-            String[] selectionArgs = { startDate, endDate };
-            Cursor cursor = database.rawQuery(sql, selectionArgs);
-
-
-
-            currentIndex = 0;
-
-
-            imgList.clear();
-            pathList.clear();
-
-            int index = 0;
-            cursor.moveToFirst();
-            while (cursor.moveToNext()){
-                Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(index++));
-                imgList.add(bitmap);
-            }
-
-            if(imgList.size() == 0){
-                Toast toastView = Toast.makeText(this, "해당 기간에 촬영한 사진이 없습니다.", Toast.LENGTH_SHORT);
-                toastView.show();
+            String sql = "SELECT filePath FROM image WHERE strftime('%Y-%m-%d', datetime(date_taken / 1000, 'unixepoch')) >= ? AND strftime('%Y-%m-%d', datetime(date_taken / 1000, 'unixepoch')) <= ?";
+            String[] selectionArgs = new String[]{ startDate, endDate };
+            Cursor cursor = null;
+            cursor = database.rawQuery(sql, selectionArgs);
+            if(cursor.getCount() == 0){
+                Toast tv = Toast.makeText(this, "해당 기간에 촬영한 이미지가 없습니다.", Toast.LENGTH_SHORT);
+                tv.show();
                 return;
             }
+                currentIndex = 0;
+
+
+                imgList.clear();
+
+                int index = 0;
+            if (cursor.moveToFirst()) {
+
+                do {
+                    int columnIndex = cursor.getColumnIndex("filepath");
+                    Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(columnIndex));
+                    imgList.add(bitmap);
+                }while (cursor.moveToNext());
+            }
+
+
             currentIndex = 0;
             numImage = imgList.size();
             showImageList(currentIndex);
@@ -356,11 +373,149 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void onMapButtonClicked(){
+    protected void onMapButtonClicked() {
 
-    }
+        Geocoder geocoder = new Geocoder(this);
+
+        nextButton.setVisibility(View.GONE);
+        mapButton.setVisibility(View.GONE);
+        diaryButton.setVisibility(View.GONE);
+        prevButton.setVisibility(View.GONE);
+
+        MapsFragment fragment = new MapsFragment();
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+
+        transaction.add(R.id.fragment_container, fragment);
+        transaction.addToBackStack(null);
+
+        backUpList.clear();
+
+        for(int i = 0; i < imgList.size(); i++){
+            backUpList.add(imgList.get(i));
+        }
+
+        transaction.commit();
+            fragmentManager.addOnBackStackChangedListener(
+                    new FragmentManager.OnBackStackChangedListener() {
+
+                        @Override
+                        public void onBackStackChanged() {
+
+                            imgList.clear();
+                            if (fragmentManager.getBackStackEntryCount() == 0) {
+
+                                String selectedAdd = fragment.getAddressName();
+                                System.out.println(selectedAdd + " 를 선택함");
+
+                                nextButton.setVisibility(View.VISIBLE);
+                                mapButton.setVisibility(View.VISIBLE);
+                                diaryButton.setVisibility(View.VISIBLE);
+                                prevButton.setVisibility(View.VISIBLE);
+
+                                String sql = "SELECT filePath, latitude, longitude FROM image";
+                                Cursor cursor = null;
+                                cursor = database.rawQuery(sql, null);
+
+                                String sarr1[];
+                                try {
+                                    sarr1 = selectedAdd.split(" ");
+                                } catch (Exception e) {
+                                    return;
+                                }
+                                if (cursor.moveToFirst()) {
+                                    int num = 0;
+                                    do {
+
+                                        int latIndex = cursor.getColumnIndex("latitude");
+                                        double lat = cursor.getDouble(latIndex);
+
+                                        int longIndex = cursor.getColumnIndex("longitude");
+                                        double lng = cursor.getDouble(longIndex);
+
+
+                                        LatLng latLng = new LatLng(lat, lng);
+                                        List<Address> addlist;
+                                        try {
+                                            addlist = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                            return;
+                                        }
+                                        if (addlist.size() > 0) {
+                                            Address add = addlist.get(0);
+                                            StringBuilder fullAdd = new StringBuilder();
+                                            for (int i = 0; i <= add.getMaxAddressLineIndex(); i++) {
+                                                fullAdd.append(add.getAddressLine(i));
+                                                if (i < add.getMaxAddressLineIndex()) {
+                                                    fullAdd.append(", ");
+                                                }
+                                            }
+                                            String addName = fullAdd.toString();
+
+                                            String sarr2[];
+                                            try {
+                                                System.out.println(addName);
+                                                sarr2 = addName.split(" ");
+                                            }catch(NullPointerException e){
+                                                continue;
+                                            }
+
+                                            boolean same = true;
+                                            if (sarr1.length < 3 || sarr2.length < 3) {
+                                                int shorter = Math.min(sarr1.length, sarr2.length);
+
+                                                for (int i = 0; i < shorter; i++) {
+                                                    if (!(sarr1[i].equals(sarr2[i]))) {
+                                                        same = false;
+                                                    }
+                                                }
+                                            } else {
+                                                for (int i = 0; i < 3; i++) {
+                                                    if (!(sarr1[i].equals(sarr2[i]))) {
+                                                        same = false;
+                                                    }
+                                                }
+                                            }
+                                            if (same == true) {
+                                                int columnIndex = cursor.getColumnIndex("filepath");
+                                                Bitmap bitmap = BitmapFactory.decodeFile(cursor.getString(columnIndex));
+                                                imgList.add(bitmap);
+                                            }
+                                        }
+
+
+                                    } while (cursor.moveToNext());
+                                    System.out.println("num: " + num);
+                                }
+                                try{
+                                    if (imgList.size() == 0) {
+                                        throw new Exception();
+                                    }
+                                } catch (Exception e) {
+                                    for (int i = 0; i < backUpList.size(); i++) {
+                                        imgList.add(backUpList.get(i));
+                                    }
+                                    showToast();
+                                }finally {
+                                    currentIndex = 0;
+                                    numImage = imgList.size();
+                                    showImageList(currentIndex);
+                                }
+                            }
+
+                        }
+
+                    });
+
+
+        }
+
+
+
 
     protected void onDiaryButtonClicked(){
+
         Intent intent = new Intent(this, MainActivity2.class);
 
         Bitmap bitmap = imgList.get(currentIndex);
@@ -373,5 +528,10 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("filePath", filePath);
 
         startActivity(intent);
+    }
+
+    private void showToast(){
+        Toast.makeText(this, "해당 위치에서 촬영한 사진이 없습니다.", Toast.LENGTH_SHORT).show();
+
     }
 }

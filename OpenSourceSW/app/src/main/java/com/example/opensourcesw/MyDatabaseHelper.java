@@ -8,7 +8,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
 
 
     public MyDatabaseHelper(Context context) {
-        super(context, "opensource", null, 1);
+        super(context, "opensource", null, 3);
     }
 
 
