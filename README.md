@@ -9,7 +9,7 @@
 
 ## Search images
 - Search images using tags
-![Search images using tags](./simulation/tagsearch.gif)
+- ![Search images using tags](./simulation/tagsearch.gif)
 
 - Search images using date taken
 ![Search images using date taken](./simulation/periodsearch.gif)
