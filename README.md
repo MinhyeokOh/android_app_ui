@@ -3,12 +3,12 @@
 
 ## Functions
 
-- :tags: [Search images using tags](#tags-Search-images-using-tags)
-- :date_taken: [Search images using date taken](#date-taken-Search-images-using-date-taken)
-- :place_taken: [Download simulation file](#place-taken-Search-images-using-place-taken)
-- :move: [Move to previous image/next image & Move to Diary writing screen](#move-Move-to-previous-image-next-image-Move-to-Diary-writing-screen)
-- :dsmd: [Diary store/modify/delete](#dsmd-Diary-store-modify-delete)
-- :keywordtag: [Select Keyword from diary and add tag](#keywordtag-Select-Keyword-from-diary-and-add-tag)
+- [Search images using tags](#tags-Search-images-using-tags)
+- [Search images using date taken](#date-taken-Search-images-using-date-taken)
+- [Search images using place taken](#place-taken-Search-images-using-place-taken)
+- [Move to previous image/next image & Move to Diary writing screen](#move-Move-to-previous-image-next-image-Move-to-Diary-writing-screen)
+- [Diary store/modify/delete](#dsmd-Diary-store-modify-delete)
+- [Select Keyword from diary and add tag](#keywordtag-Select-Keyword-from-diary-and-add-tag)
 
 @@@ Search images using tags @@@
 ![Search images using tags](./simulation/tagsearch.gif)
@@ -17,7 +17,7 @@
 ![Search images using date taken](./simulation/periodsearch.gif)
 
 @@@ Search images using place taken @@@
-![Download simulation file](./simulation/placesearch.mp4)
+![Search images using place taken](./simulation/placesearch.mp4)
 
 @@@ Move to previous image/next image & Move to Diary writing screen @@@
 ![Move to previous image/next image & Move to Diary writing screen](./simulation/imagemovediary.gif)
