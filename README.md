@@ -1,20 +1,29 @@
 # android_app_ui
 오픈소스SW기여 프로젝트 레포지토리
 
+## Functions
+
+- :tags: [Search images using tags](#tags-Search-images-using-tags)
+- :date_taken: [Search images using date taken](#date-taken-Search-images-using-date-taken)
+- :place_taken: [Download simulation file](#place-taken-Search-images-using-place-taken)
+- :move: [Move to previous image/next image & Move to Diary writing screen](#move-Move-to-previous-image-next-image-Move-to-Diary-writing-screen)
+- :dsmd: [Diary store/modify/delete](#dsmd-Diary-store-modify-delete)
+- :keywordtag: [Select Keyword from diary and add tag](#keywordtag-Select-Keyword-from-diary-and-add-tag)
+
 @@@ Search images using tags @@@
-![태그로 이미지 검색하기](./simulation/tagsearch.gif)
+![Search images using tags](./simulation/tagsearch.gif)
 
 @@@ Search images using date taken @@@
-![촬영 날짜로 이미지 검색하기](./simulation/periodsearch.gif)
+![Search images using date taken](./simulation/periodsearch.gif)
 
 @@@ Search images using place taken @@@
 ![Download simulation file](./simulation/placesearch.mp4)
 
 @@@ Move to previous image/next image & Move to Diary writing screen @@@
-![이전 이미지/다음 이미지로 이동하기 & 일기 작성 화면으로 이동하기](./simulation/imagemovediary.gif)
+![Move to previous image/next image & Move to Diary writing screen](./simulation/imagemovediary.gif)
 
 @@@ Diary store/modify/delete @@@
-![일기 저장/수정/삭제하기](./simulation/diarystoremodifydelete.gif)
+![Diary store/modify/delete](./simulation/diarystoremodifydelete.gif)
 
 @@@ Select Keyword from diary and add tag @@@
-![일기 내용에서 키워드를 선택한 후 태그 추가하기](./simulation/createtags.gif)
+![Select Keyword from diary and add tag](./simulation/createtags.gif)
