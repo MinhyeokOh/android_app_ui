@@ -4,7 +4,7 @@
 ## Functions
 
 - [Search images](#search-images)
-- [move](#move)
+- [Move](#Move)
 - [Diary](#diary)
 
 ## Search images
@@ -17,7 +17,7 @@
 - Search images using place taken
 ![Search images using place taken](./simulation/placesearch.mp4)
 
-## move
+## Move
 - Move to previous image/next image & Move to Diary writing screen
 ![Move to previous image/next image & Move to Diary writing screen](./simulation/imagemovediary.gif)
 
